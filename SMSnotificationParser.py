@@ -27,6 +27,8 @@ SMS_DEFAULTS = {
           'text_pattern'  : "(\d{6})\s+ΚΩΔΙΚΟΣ ΓΙΑ ΕΚΔΟΣΗ"
         , 'tesseract_cmd' : r"C:\Program Files\Tesseract-OCR\tesseract.exe"
         , 'timeout'       : 60 
+        , 'notification_center_name' : "Benachrichtigungscenter"
+        , 'clear_button_label'      : "Alle löschen"
     
     }
  
@@ -47,10 +49,16 @@ class SMSNotification( metaclass=Singleton ):
     PIXEL_OFFSET_NOTIFIER_Y_POSITION = -20
 
 
-    def __init__( self, text_pattern : str, tesseract_cmd : str, timeout : int ):
+    def __init__(  self, text_pattern : str, tesseract_cmd : str, timeout : int
+                 , notification_center_name = SMS_DEFAULTS['notification_center_name']
+                 , clear_button_label = SMS_DEFAULTS['clear_button_label']):
         self.text_pattern  = re.compile(text_pattern)
         pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
         self.timeout       = timeout
+        self.notification_center_name = notification_center_name
+        
+        self.clear_button_label = clear_button_label
+        
         
         monitors = list()
         for m in get_monitors():
@@ -64,6 +72,8 @@ class SMSNotification( metaclass=Singleton ):
             
         self.notification_x_click_position = int( self.primary_display.x + self.primary_display.width + SMSNotification.PIXEL_OFFSET_NOTIFIER_X_POSITION )
         self.notification_y_click_position = int( self.primary_display.y + self.primary_display.height + SMSNotification.PIXEL_OFFSET_NOTIFIER_Y_POSITION )
+        
+        self.self._click_clear_all_button()
             
     def _click_notification_icon(self):            
         pyautogui.click(self.notification_x_click_position, self.notification_y_click_position)
@@ -96,9 +106,9 @@ class SMSNotification( metaclass=Singleton ):
         root = auto.GetRootControl()
         # Suche nach dem Benachrichtigungscenter-Fenster
         for control in root.GetChildren():
-            if "Benachrichtigungscenter" in control.Name:
+            if self.notification_center_name in control.Name:
                 # Suche innerhalb des Fensters nach dem Button
-                clear_button = control.Control(searchDepth=10, Name="Alle löschen")
+                clear_button = control.Control(searchDepth=10, Name=self.clear_button_label)
                 if clear_button.Exists(0, 0):
                     clear_button.Click()
                     cleared = True
@@ -134,8 +144,14 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--pattern', dest='pattern',   default=SMS_DEFAULTS['text_pattern'])
     parser.add_argument('--tesseract_cmd', dest='tesseract', default=SMS_DEFAULTS['tesseract_cmd'])
     parser.add_argument('-t', '--timeout', dest='timeout',   default=SMS_DEFAULTS['timeout'])
+    parser.add_argument('--notification-center-name', dest='notification_center_name',   default=SMS_DEFAULTS['notification_center_name'])
+    parser.add_argument('--clear-button-label', dest='clear_button_label',   default=SMS_DEFAULTS['clear_button_label'])
     args = vars(parser.parse_args())
-    sms_receiver = SMSNotification(text_pattern=args['pattern'], tesseract_cmd=args['tesseract'], timeout=args['timeout'])
+    sms_receiver = SMSNotification(  text_pattern=args['pattern']
+                                   , tesseract_cmd=args['tesseract']
+                                   , timeout=args['timeout']
+                                   , notification_center_name=args['notification_center_name']
+                                   , clear_button_label=args['clear_button_label'])
     sms_code = sms_receiver.code
     if not sms_code is None:
         print("sms_code:", sms_code)
