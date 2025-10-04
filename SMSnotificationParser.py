@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Sep 30 17:40:10 2025
+This module provides functionality to parse SMS notifications from the Windows Notification Center.
 
-@author: wgout
+It is designed to extract a verification code from SMS messages that are displayed as notifications.
+This script requires a Tesseract OCR installation with support for Greek, German, and English,
+and it is intended to run on a German Windows system where the notification center is identified by
+the name "Benachrichtigungscenter".
 
-requires 
-- a tesseract installation supporting greek, german and english languages
-- a german Windows system as the notification control is beein identified by its Name 
 """
 
 
@@ -38,6 +38,13 @@ SMS_DEFAULTS = {
 #%%
 
 class Singleton(type):
+    """
+    A metaclass for creating singleton classes.
+
+    This metaclass ensures that only one instance of a class is created. If an instance
+    already exists, it returns the existing instance instead of creating a new one.
+
+    """
     _instances = {}
     def __call__(cls, *args, **kwargs):
         if cls not in cls._instances:
@@ -45,6 +52,14 @@ class Singleton(type):
         return cls._instances[cls]
     
 class SMSNotification( metaclass=Singleton ):
+    """
+    A class to handle SMS notifications from the Windows Notification Center.
+
+    This class captures screenshots of the notification area, uses OCR to extract text,
+    and parses the text to find a specific code based on a regex pattern. It is implemented
+    as a singleton to ensure only one instance manages the notification area.
+
+    """
     MESSAGE_PIXEL_WIDHT = 300
     PIXEL_OFFSET_NOTIFIER_X_POSITION = -20
     PIXEL_OFFSET_NOTIFIER_Y_POSITION = -20
@@ -53,6 +68,19 @@ class SMSNotification( metaclass=Singleton ):
     def __init__(  self, text_pattern : str, tesseract_cmd : str, timeout : int
                  , notification_center_name = SMS_DEFAULTS['notification_center_name']
                  , clear_button_label = SMS_DEFAULTS['clear_button_label']):
+        """
+        Initializes the SMSNotification instance.
+
+        Args:
+            text_pattern (str): The regex pattern to find the code in the SMS text.
+            tesseract_cmd (str): The file path to the Tesseract OCR executable.
+            timeout (int): The maximum time in seconds to wait for an SMS notification.
+            notification_center_name (str, optional): The name of the Windows Notification Center.
+                Defaults to "Benachrichtigungscenter".
+            clear_button_label (str, optional): The label of the "Clear All" button.
+                Defaults to "Alle löschen".
+
+        """
         self.text_pattern  = re.compile(text_pattern)
         pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
         self.timeout       = timeout
@@ -76,25 +104,61 @@ class SMSNotification( metaclass=Singleton ):
         
         self.click_clear_all_button()
             
-    def _click_notification_icon(self):            
+    def _click_notification_icon(self):
+        """
+        Clicks the notification icon to open the Notification Center.
+
+        This method simulates a mouse click at the coordinates of the notification icon
+        to ensure the notification area is visible for capturing.
+
+        """
         pyautogui.click(self.notification_x_click_position, self.notification_y_click_position)
         time.sleep(1)
         return
 
 
     def _extract_code_from_text(self, text):
+        """
+        Extracts a code from the given text using the defined regex pattern.
+
+        Args:
+            text (str): The text from which to extract the code.
+
+        Returns:
+            str: The extracted code, or None if no match is found.
+
+        """
         match = re.search(self.text_pattern, text)
         if match:
             return match.group(1)
         return None
 
     def _capture_notification_area(self):
+        """
+        Captures a screenshot of the notification area.
+
+        The notification area is defined by the bounding box `self.bbox`, which is calculated
+        based on the primary display's resolution.
+
+        Returns:
+            PIL.Image.Image: The captured screenshot as a Pillow Image object.
+
+        """
         return ImageGrab.grab(bbox=self.bbox)  
 
 
 
-    # Extrahiere den 6-stelligen Code aus dem bekannten Textmuster
-    def _extract_code(self, text):        
+    def _extract_code(self, text):
+        """
+        Extracts the 6-digit code from the given text based on the regex pattern.
+
+        Args:
+            text (str): The text from which to extract the code.
+
+        Returns:
+            str: The extracted 6-digit code, or None if no match is found.
+
+        """
         match = re.search(self.text_pattern, text)
         if match:
             return match.group(1)
@@ -102,6 +166,16 @@ class SMSNotification( metaclass=Singleton ):
     
 
     def click_clear_all_button(self):
+        """
+        Clicks the "Clear All" button in the Notification Center.
+
+        This method opens the Notification Center and clicks the "Clear All" button to dismiss
+        all notifications, ensuring a clean state for detecting new messages.
+
+        Returns:
+            bool: True if the button was clicked, False otherwise.
+
+        """
         cleared = False
         self._click_notification_icon()
         time.sleep(1)
@@ -117,6 +191,17 @@ class SMSNotification( metaclass=Singleton ):
         return cleared
 
     def wait_for_sms_code(self):
+        """
+        Waits for an SMS code to appear in the Notification Center.
+
+        This method repeatedly captures the notification area, uses OCR to extract text,
+        and searches for the code until the timeout is reached. Debug screenshots are saved
+        for each attempt.
+
+        Returns:
+            str: The extracted SMS code, or None if the timeout is reached.
+
+        """
         start = time.time()
         while (time.time() - start) < self.timeout:
             self._click_notification_icon()
@@ -138,6 +223,13 @@ class SMSNotification( metaclass=Singleton ):
     
     @property
     def code(self):
+        """
+        A property to get the SMS code by calling `wait_for_sms_code`.
+
+        Returns:
+            str: The extracted SMS code, or None if not found.
+
+        """
         return self.wait_for_sms_code()
 
 

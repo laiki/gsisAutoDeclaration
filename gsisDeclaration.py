@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Sep 30 18:30:25 2025
+This module automates the process of creating and downloading official declarations
+from the Greek government's public services portal (gov.gr).
 
-@author: wgout
+It uses Selenium to navigate the website, log in with user credentials, fill out the
+declaration form, and handle the SMS verification process. The final declaration
+is downloaded as a PDF file.
+
 """
 
 
@@ -32,12 +36,37 @@ GSIS_DEFAULTS = {
 
 
 class gsisGrabber:
+    """
+    A class to automate the creation of official declarations on the gov.gr portal.
+
+    This class manages the web scraping process using Selenium, from logging in to
+    downloading the final PDF. It handles user authentication, form submission,
+    and SMS code verification.
+
+    """
     
     def __init__(  self, username, password, taxid, email, receiver, text, download_dir
                  , url, timeout
                  #, retries
                  , getCode=None, filename=None
                  ) :
+        """
+        Initializes the gsisGrabber instance.
+
+        Args:
+            username (str): The Taxisnet username for login.
+            password (str): The Taxisnet password for login.
+            taxid (str): The user's tax identification number for verification.
+            email (str): The user's email address.
+            receiver (str): The name of the recipient of the declaration.
+            text (str): The main content of the declaration.
+            download_dir (str): The directory where the final PDF will be saved.
+            url (str): The URL of the declaration creation page.
+            timeout (int): The timeout in seconds for web driver waits.
+            getCode (function, optional): A function to retrieve the SMS code. Defaults to None.
+            filename (str, optional): The desired filename for the downloaded PDF. Defaults to None.
+
+        """
         self.username = username
         self.password = password
         self.taxID    = taxid
@@ -85,16 +114,25 @@ class gsisGrabber:
         return
     
     def __del__(self):
+        """Destructor to clean up resources."""
         self.cleanup()
     
     def __enter__(self):
+        """Enter the runtime context related to this object."""
         return self
     
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the runtime context related to this object."""
         self.cleanup()
         
         
     def cleanup(self):
+        """
+        Cleans up the resources used by the gsisGrabber.
+
+        This method quits the web driver and removes the temporary download directory.
+
+        """
         if not self.driver is None:
             self.driver.quit()
         if not self.tmpdir is None:
@@ -102,6 +140,13 @@ class gsisGrabber:
         return
         
     def _acceptCoockies(self):
+        """
+        Accepts the cookie consent banner on the website.
+
+        This method waits for the cookie button to be clickable and then clicks it.
+        It will pass silently if the button is not found.
+
+        """
         try:
             cookie_button = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Ενημερώθηκα')]")))
             self._scroll_and_click(cookie_button)
@@ -110,6 +155,16 @@ class gsisGrabber:
         return
     
     def _login(self):
+        """
+        Handles the login process on the gov.gr portal.
+
+        This method navigates through the Taxisnet authentication by entering the
+        provided username and password.
+
+        Raises:
+            Exception: If any step of the login process fails.
+
+        """
         try:
             login_button = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Σύνδεση')]")))
             self._scroll_and_click(login_button)
@@ -142,6 +197,16 @@ class gsisGrabber:
         return
             
     def _authentificate(self) :
+        """
+        Authenticates the user after login.
+
+        This method confirms the user's identity by verifying the Tax ID and
+        proceeding to the main form.
+
+        Raises:
+            Exception: If the Tax ID does not match or if authentication fails.
+
+        """
         try:    
             begin_label = self.wait.until(EC.presence_of_element_located((By.XPATH, "//span[contains(text(), 'Συνέχεια')]")))
             self._scroll_and_click(begin_label)
@@ -169,6 +234,15 @@ class gsisGrabber:
         return
     
     def _initForm(self):
+        """
+        Initializes the declaration form.
+
+        This method enters the user's email address and proceeds to the next step.
+
+        Raises:
+            Exception: If the email field cannot be found or the form cannot be submitted.
+
+        """
         
         try:
             email_input = self.wait.until(EC.presence_of_element_located((By.ID, "solemn:email")))
@@ -187,6 +261,16 @@ class gsisGrabber:
         return
     
     def _declare(self) :
+        """
+        Fills out and submits the declaration form.
+
+        This method enters the declaration text, specifies the recipient, and handles
+        the SMS verification process to finalize and issue the declaration.
+
+        Raises:
+            Exception: If any step of filling or submitting the form fails.
+
+        """
                 
         try:
             textarea = self.wait.until(EC.presence_of_element_located((By.XPATH, "//textarea[@name='free_text']")))
@@ -272,6 +356,16 @@ class gsisGrabber:
         return
     
     def _sendCode(self, code):
+        """
+        Submits the SMS verification code.
+
+        Args:
+            code (str): The verification code received via SMS.
+
+        Raises:
+            Exception: If the code cannot be submitted or is incorrect.
+
+        """
         try:
             code_input = self.driver.find_element(By.ID, "confirmation_code")
             self.driver.execute_script("arguments[0].scrollIntoView(true);", code_input)
@@ -302,6 +396,16 @@ class gsisGrabber:
         return
     
     def _getSMSCode(self):
+        """
+        Retrieves the SMS verification code.
+
+        If a `getCode` function was provided during initialization, it will be called.
+        Otherwise, it will prompt for the code from the console.
+
+        Returns:
+            str: The SMS verification code.
+
+        """
         code = None
         if self.getCode is None:
             code = input("enter code: ")
@@ -310,6 +414,16 @@ class gsisGrabber:
         return code
     
     def _saveDocument(self):
+        """
+        Downloads and saves the final declaration PDF.
+
+        This method finds the download link, downloads the file, and saves it to the
+        specified directory, handling potential filename conflicts.
+
+        Raises:
+            Exception: If the download fails or the file cannot be saved.
+
+        """
         #download_button = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Αποθήκευση')]")))
         #self._scroll_and_click(download_button)
         link_element  = self.wait.until(EC.element_to_be_clickable((By.XPATH, '//a[contains(@href, "pdf-download")]')))
@@ -339,6 +453,17 @@ class gsisGrabber:
     
     
     def run(self):
+        """
+        Executes the full process of creating and downloading a declaration.
+
+        This is the main entry point for the class, which orchestrates the login,
+        form filling, and download processes.
+
+        Returns:
+            tuple: A tuple containing the file URL and the local file path of the
+                   downloaded declaration.
+
+        """
 
         try:
             self._login()
@@ -361,6 +486,14 @@ class gsisGrabber:
         return self.fileurl, self.filepath                  
 
     def _scroll_to(self, element, timeout=5):
+        """
+        Scrolls the page to bring a specified element into view.
+
+        Args:
+            element (WebElement): The Selenium WebElement to scroll to.
+            timeout (int, optional): The time to wait for the scroll to complete. Defaults to 5.
+
+        """
         # Scrollen
         self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", element)
     
@@ -377,8 +510,15 @@ class gsisGrabber:
     
     def _scroll_and_click(self, element, timeout=5):
         """
-        Scrollt zu einem Element, wartet bis es vollständig sichtbar ist,
-        und klickt es sicher.
+        Scrolls to an element and securely clicks it.
+
+        This method ensures an element is fully visible before attempting to click it,
+        which helps prevent misclicks or errors.
+
+        Args:
+            element (WebElement): The Selenium WebElement to click.
+            timeout (int, optional): The time to wait for the element to be visible. Defaults to 5.
+
         """
         self._scroll_to(element, timeout)
         # Klicken
