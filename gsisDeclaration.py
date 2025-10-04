@@ -24,7 +24,7 @@ GSIS_DEFAULTS = {
         'download_dir' : pathlib.Path('./downloads').absolute()
       , 'url'          : "https://dilosi.services.gov.gr/templates/YPDIL/create"
       , 'timeout'      : 15
-      , 'retries'      : 3
+      #, 'retries'      : 3
     }
  
 #%% 
@@ -32,7 +32,11 @@ GSIS_DEFAULTS = {
 
 class gsisGrabber:
     
-    def __init__(self, username, password, taxid, email, receiver, text, download_dir, url, timeout, retries, getCode=None, filename=None ) :
+    def __init__(  self, username, password, taxid, email, receiver, text, download_dir
+                 , url, timeout
+                 #, retries
+                 , getCode=None, filename=None
+                 ) :
         self.username = username
         self.password = password
         self.taxID    = taxid
@@ -43,7 +47,7 @@ class gsisGrabber:
         self.url      = url
         self.filename = filename
         self.timeout  = timeout
-        self.retries  = int(retries)
+        #self.retries  = int(retries)
         
         self.chrome_options = Options()
         self.chrome_options.add_argument("--incognito") # private mode
@@ -228,23 +232,23 @@ class gsisGrabber:
             
 
 
-        while(self.retries > 0):
+        while(True): 
             try:
                 code = self._getSMSCode()
                 if code is None:
                     continue
-            except:
-                raise Exception("no SMS code received")
+            except Exception as e:
+                raise Exception("no SMS code received") from e
                 
             try:
                 self._sendCode(code)
             except:
-                self.retries -= 1 
+                #self.retries -= 1 
                 continue
             break            
         
-        if self.retries == 0:
-            raise Exception("too many failing attempts to provide the right code")
+        #if self.retries == 0:
+        #    raise Exception("too many failing attempts to provide the right code")
         
         self._saveDocument()
 

@@ -60,7 +60,8 @@ def automate(args):
         download_dir.mkdir(exist_ok=True, parents=True)
         
         processed = list()
-        for rec in [ e for e in list(enumerate(header)) if e[1] != 'folder' ]: 
+        receiver_list = [ e for e in list(enumerate(header)) if e[1] != 'folder' ]
+        for rec in receiver_list: 
             receiver_index = rec[0]
             receiver_name  = rec[1]
             url = None
@@ -84,7 +85,7 @@ def automate(args):
                         , text       = text
                         ) as gsis:
                     url, declaration = gsis.run()
-                    print(f"declaration {idx} of {df.shape[0]} for {receiver_name} created")
+                    print(f"declaration {idx}/{receiver_index} of {df.shape[0]}/{len(receiver_list)} for {receiver_name} created")
                     
             except Exception as e:
                 print(e)
@@ -138,10 +139,10 @@ if __name__ == '__main__':
                         , default = gsisDeclaration.GSIS_DEFAULTS['url'], type=str, required=False
                         , help="url to the Hellenic portal used to create the declaration." 
                         )
-    parser.add_argument(  '--retries', dest='retries'
-                        , default = gsisDeclaration.GSIS_DEFAULTS['retries'], type=int, required=False
-                        , help="max retries to collect the SMS code." 
-                        )
+    #parser.add_argument(  '--retries', dest='retries'
+    #                    , default = gsisDeclaration.GSIS_DEFAULTS['retries'], type=int, required=False
+    #                    , help="max retries to collect the SMS code." 
+    #                    )
     parser.add_argument(  '--web_timeout', dest='web_timeout'
                         , default = gsisDeclaration.GSIS_DEFAULTS['timeout'], type=int, required=False
                         , help="Timeout in seconds to wait for a web result." 
