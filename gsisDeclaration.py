@@ -51,8 +51,9 @@ class gsisGrabber:
         #self.retries  = int(retries)
         
         debug_dir = pathlib.Path('./debug')
-        shutil.rmtree(debug_dir, ignore_errors=True)
-        debug_dir.mkdir(parents=True, exist_ok=False)
+        #shutil.rmtree(debug_dir, ignore_errors=True)
+        if not debug_dir.exists():
+            debug_dir.mkdir(parents=True, exist_ok=False)
 
         
         self.chrome_options = Options()
@@ -94,8 +95,10 @@ class gsisGrabber:
         
         
     def cleanup(self):
-        self.driver.quit()
-        self.tmpdir.cleanup()
+        if not self.driver is None:
+            self.driver.quit()
+        if not self.tmpdir is None:
+            self.tmpdir.cleanup()
         return
         
     def _acceptCoockies(self):
@@ -240,6 +243,7 @@ class gsisGrabber:
         local_retry = 3
         while(True): 
             try:
+                print('going to read code')
                 code = self._getSMSCode()
                 print('read code:', code)
                 if code is None:
@@ -248,6 +252,7 @@ class gsisGrabber:
                 raise Exception("no SMS code received") from e
                 
             try:
+                print('going to send code')
                 self._sendCode(code)
                 print('code send:', code)
                 break
@@ -256,6 +261,7 @@ class gsisGrabber:
                 local_retry -= 1
                 if local_retry == 0:
                     raise Exception("unable too send the SMS code") from e
+                    
             break            
         
         #if self.retries == 0:

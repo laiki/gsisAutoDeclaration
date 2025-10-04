@@ -20,6 +20,7 @@ import re
 from screeninfo import get_monitors
 import pandas as pd
 import argparse
+from datetime import datetime as dt
 
 #%% defaults
 
@@ -124,8 +125,13 @@ class SMSNotification( metaclass=Singleton ):
             code = self._extract_code(text)
             if code:
                 print("code found:", code)
+                screenshot.save( f"./debug/{dt.now().strftime('%Y%m%dT%H%M%S')}_code.png")
+
                 self.click_clear_all_button()
                 return code
+            # no code received :/
+            screenshot.save( f"./debug/{dt.now().strftime('%Y%m%dT%H%M%S')}_no_code.png")
+            
             time.sleep(1)
         print("SMS code receiver timeout.")
         return None

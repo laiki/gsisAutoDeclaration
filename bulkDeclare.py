@@ -35,6 +35,9 @@ def automate(args):
     if not csv_file.exists():
         raise Exception(f"{csv_file.as_posix()} file not found!")
     
+    status_page = f"bulk_declare_{process_start.strftime('%Y%m%dT%H%M')}.html"
+    pd.DataFrame().to_html(status_page)
+    
     header = pd.read_csv(csv_file, sep = args['csv_sep'], header=None).iloc[0]
     receivers = header.to_list()
     if 'folder' in receivers:
@@ -51,7 +54,11 @@ def automate(args):
     
     # will be used as function pointer in processing
     def getSMS():
-        return sms_receiver.wait_for_sms_code()
+        print('calling sms_receiver.wait_for_sms_code()')
+        code = sms_receiver.wait_for_sms_code()
+        print('returned from sms_receiver.wait_for_sms_code():', code)
+        return code
+    
     status_over_all = list()
     
     for idx, row in df.iterrows():   
