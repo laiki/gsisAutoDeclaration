@@ -73,7 +73,7 @@ class SMSNotification( metaclass=Singleton ):
         self.notification_x_click_position = int( self.primary_display.x + self.primary_display.width + SMSNotification.PIXEL_OFFSET_NOTIFIER_X_POSITION )
         self.notification_y_click_position = int( self.primary_display.y + self.primary_display.height + SMSNotification.PIXEL_OFFSET_NOTIFIER_Y_POSITION )
         
-        self.self._click_clear_all_button()
+        self._click_clear_all_button()
             
     def _click_notification_icon(self):            
         pyautogui.click(self.notification_x_click_position, self.notification_y_click_position)

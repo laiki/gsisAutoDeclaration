@@ -84,7 +84,7 @@ def automate(args):
                         , text       = text
                         ) as gsis:
                     url, declaration = gsis.run()
-                    print(f"declaration {idx} of {df.shape[0]} for {args['receiver']} created")
+                    print(f"declaration {idx} of {df.shape[0]} for {receiver_name} created")
                     
             except Exception as e:
                 print(e)
