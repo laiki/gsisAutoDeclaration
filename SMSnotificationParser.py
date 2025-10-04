@@ -3,6 +3,10 @@
 Created on Tue Sep 30 17:40:10 2025
 
 @author: wgout
+
+requires 
+- a tesseract installation supporting greek, german and english languages
+- a german Windows system as the notification control is beein identified by its Name 
 """
 
 
@@ -22,7 +26,7 @@ import argparse
 SMS_DEFAULTS = {
           'text_pattern'  : "(\d{6})\s+ΚΩΔΙΚΟΣ ΓΙΑ ΕΚΔΟΣΗ"
         , 'tesseract_cmd' : r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-        , 'timeout'       : 10 
+        , 'timeout'       : 60 
     
     }
  
@@ -43,7 +47,7 @@ class SMSNotification( metaclass=Singleton ):
     PIXEL_OFFSET_NOTIFIER_Y_POSITION = -20
 
 
-    def __init__( self, text_pattern, tesseract_cmd, timeout ):
+    def __init__( self, text_pattern : str, tesseract_cmd : str, timeout : int ):
         self.text_pattern  = re.compile(text_pattern)
         pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
         self.timeout       = timeout
@@ -97,9 +101,7 @@ class SMSNotification( metaclass=Singleton ):
                 clear_button = control.Control(searchDepth=10, Name="Alle löschen")
                 if clear_button.Exists(0, 0):
                     clear_button.Click()
-                    print("Button 'Alles löschen' wurde geklickt.")
                     cleared = True
-        print("Button 'Alles löschen' nicht gefunden.")
         return cleared
 
     def wait_for_sms_code(self):
@@ -110,11 +112,11 @@ class SMSNotification( metaclass=Singleton ):
             text = pytesseract.image_to_string(screenshot, lang='ell+deu+eng')
             code = self._extract_code(text)
             if code:
-                print("Code gefunden:", code)
+                print("code found:", code)
                 self._click_clear_all_button()
                 return code
             time.sleep(1)
-        print("Kein Code gefunden.")
+        print("SMS code receiver timeout.")
         return None
     
     @property

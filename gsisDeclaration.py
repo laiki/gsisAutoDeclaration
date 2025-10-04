@@ -231,6 +231,8 @@ class gsisGrabber:
         while(self.retries > 0):
             try:
                 code = self._getSMSCode()
+                if code is None:
+                    continue
             except:
                 raise Exception("no SMS code received")
                 
@@ -381,7 +383,7 @@ if __name__ == '__main__':
     parser.add_argument('--text', dest='text', default=None, required=True)
     parser.add_argument('--url', dest='url', default=GSIS_DEFAULTS['url'], required=False)
     parser.add_argument('--retries', dest='retries', default=GSIS_DEFAULTS['retries'], type=int, required=False)
-    parser.add_argument('--timeoutt', dest='timeout', default=GSIS_DEFAULTS['timeout'], type=int, required=False)
+    parser.add_argument('--timeout', dest='timeout', default=GSIS_DEFAULTS['timeout'], type=int, required=False)
     parser.add_argument('--filename', dest='filename', default=None, required=False)
     
         
