@@ -49,6 +49,11 @@ class gsisGrabber:
         self.timeout  = timeout
         #self.retries  = int(retries)
         
+        debug_dir = pathlib.Path('./debug')
+        shutil.rmtree(debug_dir, ignore_errors=True)
+        debug_dir.mkdir(parents=True, exist_ok=False)
+
+        
         self.chrome_options = Options()
         self.chrome_options.add_argument("--incognito") # private mode
         self.chrome_options.add_argument("--disable-popup-blocking")
@@ -231,7 +236,7 @@ class gsisGrabber:
             raise Exception("failed to requeest SMS code") from e
             
 
-
+        local_retry = 3
         while(True): 
             try:
                 code = self._getSMSCode()
@@ -242,9 +247,12 @@ class gsisGrabber:
                 
             try:
                 self._sendCode(code)
-            except:
+                break
+            except Exception as e:
                 #self.retries -= 1 
-                continue
+                local_retry -= 1
+                if local_retry == 0:
+                    raise Exception("unable too send the SMS code") from e
             break            
         
         #if self.retries == 0:
@@ -370,9 +378,6 @@ class gsisGrabber:
 #%%
 
 if __name__ == '__main__':
-    debug_dir = pathlib.Path('./debug')
-    shutil.rmtree(debug_dir, ignore_errors=True)
-    debug_dir.mkdir(parents=True, exist_ok=False)
     
     parser = argparse.ArgumentParser(
           prog='gsisDeclaration'
@@ -386,7 +391,7 @@ if __name__ == '__main__':
     parser.add_argument('--download-dir', dest='download_dir', default=GSIS_DEFAULTS['download_dir'], required=False)
     parser.add_argument('--text', dest='text', default=None, required=True)
     parser.add_argument('--url', dest='url', default=GSIS_DEFAULTS['url'], required=False)
-    parser.add_argument('--retries', dest='retries', default=GSIS_DEFAULTS['retries'], type=int, required=False)
+    #parser.add_argument('--retries', dest='retries', default=GSIS_DEFAULTS['retries'], type=int, required=False)
     parser.add_argument('--timeout', dest='timeout', default=GSIS_DEFAULTS['timeout'], type=int, required=False)
     parser.add_argument('--filename', dest='filename', default=None, required=False)
     
@@ -402,7 +407,7 @@ if __name__ == '__main__':
                            , text       = args['text']
                            , download_dir = args['download_dir']
                            , url        = args['url']
-                           , retries    = args['retries']
+                           #, retries    = args['retries']
                            , timeout    = args['timeout']
                            , getCode    = None
                            , filename   = args['filename']

@@ -70,22 +70,23 @@ def automate(args):
             text = row.iloc[receiver_index]
             
             try:
+                sms_receiver.click_clear_all_button()
                 with gsisDeclaration.gsisGrabber(
                           username    = args['user']
                         , password   = args['password']
                         , taxid      = args['taxid']
                         , email      = args['email']
                         , receiver   = receiver_name
-                        , download_dir = args['download_dir']
+                        , download_dir = download_dir.as_posix()
                         , url        = args['url']
-                        , retries    = args['retries']
+                        #, retries    = args['retries']
                         , timeout    = args['web_timeout']
                         , getCode    = getSMS
                         , filename   = "declaration.pdf"
                         , text       = text
                         ) as gsis:
                     url, declaration = gsis.run()
-                    print(f"declaration {idx}/{receiver_index} of {df.shape[0]}/{len(receiver_list)} for {receiver_name} created")
+                    print(f"{dt.now()}: declaration {idx}/{receiver_index} of {df.shape[0]}/{len(receiver_list)} for {receiver_name} created")
                     
             except Exception as e:
                 print(e)
@@ -101,7 +102,7 @@ def automate(args):
         done = pd.DataFrame(processed)
         done.to_html(download_dir / f"{idx}_result.html")
 
-    all_done = pd.DAtaFrame(list(itertools.chain.from_iterable(status_over_all)))
+    all_done = pd.DataFrame(list(itertools.chain.from_iterable(status_over_all)))
     all_done.to_html(f"bulk_declare_{dt.now().isoformat()}.html")
     return
 

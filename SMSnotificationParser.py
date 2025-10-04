@@ -73,7 +73,7 @@ class SMSNotification( metaclass=Singleton ):
         self.notification_x_click_position = int( self.primary_display.x + self.primary_display.width + SMSNotification.PIXEL_OFFSET_NOTIFIER_X_POSITION )
         self.notification_y_click_position = int( self.primary_display.y + self.primary_display.height + SMSNotification.PIXEL_OFFSET_NOTIFIER_Y_POSITION )
         
-        self._click_clear_all_button()
+        self.click_clear_all_button()
             
     def _click_notification_icon(self):            
         pyautogui.click(self.notification_x_click_position, self.notification_y_click_position)
@@ -100,9 +100,10 @@ class SMSNotification( metaclass=Singleton ):
         return None
     
 
-    def _click_clear_all_button(self):
+    def click_clear_all_button(self):
         cleared = False
         self._click_notification_icon()
+        time.sleep(1)
         root = auto.GetRootControl()
         # Suche nach dem Benachrichtigungscenter-Fenster
         for control in root.GetChildren():
@@ -123,7 +124,7 @@ class SMSNotification( metaclass=Singleton ):
             code = self._extract_code(text)
             if code:
                 print("code found:", code)
-                self._click_clear_all_button()
+                self.click_clear_all_button()
                 return code
             time.sleep(1)
         print("SMS code receiver timeout.")
