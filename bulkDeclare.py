@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Sep 30 12:02:39 2025
+This script automates the bulk creation of official declarations using a CSV file as input.
 
-@author: wgout
-
+It reads data from a CSV file, where each column represents a recipient and each row
+contains the text for the declaration. The script then iterates through the data,
+automating the process of logging into the Greek government portal, submitting the
+declaration, and downloading the resulting PDF.
 
 """
 
@@ -29,6 +31,21 @@ from datetime import datetime as dt
 #%%
 
 def automate(args):
+    """
+    Automates the bulk creation of declarations based on the provided arguments.
+
+    This function reads a CSV file, initializes the SMS and GSIS automation tools,
+    and then iterates through the CSV data to create and download a declaration
+    for each entry. It also generates HTML status reports.
+
+    Args:
+        args (dict): A dictionary of command-line arguments containing credentials,
+                     file paths, and other configuration settings.
+
+    Raises:
+        Exception: If the specified CSV file is not found.
+
+    """
     
     process_start = dt.now()
     csv_file = pathlib.Path(args['csv'])
