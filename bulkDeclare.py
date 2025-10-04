@@ -30,6 +30,7 @@ from datetime import datetime as dt
 
 def automate(args):
     
+    process_start = dt.now()
     csv_file = pathlib.Path(args['csv'])
     if not csv_file.exists():
         raise Exception(f"{csv_file.as_posix()} file not found!")
@@ -50,7 +51,7 @@ def automate(args):
     
     # will be used as function pointer in processing
     def getSMS():
-        return sms_receiver.code
+        return sms_receiver.wait_for_sms_code()
     status_over_all = list()
     
     for idx, row in df.iterrows():   
@@ -87,10 +88,13 @@ def automate(args):
                         ) as gsis:
                     url, declaration = gsis.run()
                     print(f"{dt.now()}: declaration {idx}/{receiver_index} of {df.shape[0]}/{len(receiver_list)} for {receiver_name} created")
+
                     
             except Exception as e:
                 print(e)
-                pass
+            finally:
+                sms_receiver.click_clear_all_button()
+
             
             currrent_status = { 'idx'   : idx 
                                , 'receiver' : receiver_name
@@ -102,8 +106,8 @@ def automate(args):
         done = pd.DataFrame(processed)
         done.to_html(download_dir / f"{idx}_result.html")
 
-    all_done = pd.DataFrame(list(itertools.chain.from_iterable(status_over_all)))
-    all_done.to_html(f"bulk_declare_{dt.now().isoformat()}.html")
+        all_done = pd.DataFrame(list(itertools.chain.from_iterable(status_over_all)))
+        all_done.to_html(f"bulk_declare_{process_start.strftime('%Y%m%dT%H%M')}.html")
     return
 
 

@@ -26,7 +26,7 @@ import argparse
 SMS_DEFAULTS = {
           'text_pattern'  : "(\d{6})\s+ΚΩΔΙΚΟΣ ΓΙΑ ΕΚΔΟΣΗ"
         , 'tesseract_cmd' : r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-        , 'timeout'       : 60 
+        , 'timeout'       : 120 
         , 'notification_center_name' : "Benachrichtigungscenter"
         , 'clear_button_label'      : "Alle löschen"
     

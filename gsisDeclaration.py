@@ -17,13 +17,14 @@ import argparse
 import tempfile
 import shutil
 import requests
+from datetime import datetime as dt
 
 #%% defaults
 
 GSIS_DEFAULTS = {
         'download_dir' : pathlib.Path('./downloads').absolute()
       , 'url'          : "https://dilosi.services.gov.gr/templates/YPDIL/create"
-      , 'timeout'      : 15
+      , 'timeout'      : 60
       #, 'retries'      : 3
     }
  
@@ -160,7 +161,7 @@ class gsisGrabber:
             
 
         except Exception as e:
-            self.driver.save_screenshot("debug/debug_screenshot_authentification.png")
+            self.driver.save_screenshot( (self.debug_dir / f"{dt.now()}_screenshot_authentification.png").as_posix() )
             raise Exception("error in authentification. TaxIDs differ") from e
         return
     
@@ -190,14 +191,14 @@ class gsisGrabber:
             textarea.clear()
             textarea.send_keys(self.declarationText)
         except Exception as e:
-            self.driver.save_screenshot("debug/debug_screenshot_free_text.png")
+            self.driver.save_screenshot( (self.debug_dir / f"{dt.now()}_screenshot_free_text.png").as_posix() ) 
             raise Exception("failed on providing declaration text") from e
 
         try:
             submit_button = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[text()='Συνέχεια']")))
             self._scroll_and_click(submit_button)
         except Exception as e:
-            self.driver.save_screenshot("debug/debug_screenshot_declaration_text.png")
+            self.driver.save_screenshot( (self.debug_dir / f"{dt.now()}_screenshot_declaration_text.png").as_posix() )
 
             raise Exception("failed on submit declaration text") from e
         
@@ -212,14 +213,14 @@ class gsisGrabber:
             submit_button = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[text()='Συνέχεια']")))
             self._scroll_and_click(submit_button)
         except Exception as e:
-            self.driver.save_screenshot("debug/debug_screenshot_receipient_definition.png")
+            self.driver.save_screenshot( (self.debug_dir / f"{dt.now()}_screenshot_receipient_definition.png").as_posix() )
             raise Exception("failed on defining the receipient") from e
             
         try:
             submit_button = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Έκδοση')]")))
             self._scroll_and_click(submit_button)
         except Exception as e:
-            self.driver.save_screenshot("debug/debug_screenshot_declaration_export.png")
+            self.driver.save_screenshot( (self.debug_dir / f"{dt.now()}_screenshot_declaration_export.png").as_posix() )
             raise Exception("failed to request the declaration export") from e
             
         try:
@@ -232,7 +233,7 @@ class gsisGrabber:
             self._scroll_and_click(submit_button)
 
         except Exception as e:
-            self.driver.save_screenshot("debug/debug_screenshot_SMS_request.png")
+            self.driver.save_screenshot( (self.debug_dir / f"{dt.now()}_screenshot_SMS_request.png").as_posix() )
             raise Exception("failed to requeest SMS code") from e
             
 
@@ -240,6 +241,7 @@ class gsisGrabber:
         while(True): 
             try:
                 code = self._getSMSCode()
+                print('read code:', code)
                 if code is None:
                     continue
             except Exception as e:
@@ -247,6 +249,7 @@ class gsisGrabber:
                 
             try:
                 self._sendCode(code)
+                print('code send:', code)
                 break
             except Exception as e:
                 #self.retries -= 1 
@@ -274,7 +277,7 @@ class gsisGrabber:
             self._scroll_and_click(submit_button)
 
         except Exception as e:
-            self.driver.save_screenshot("debug/debug_screenshot_confirmation_code_entry.png")
+            self.driver.save_screenshot( (self.debug_dir / f"{dt.now()}_screenshot_confirmation_code_entry.png").as_posix() )
             raise Exception("failed sending confirmation code") from e
             
         
@@ -288,7 +291,7 @@ class gsisGrabber:
         except TimeoutException:
             pass # timeout while querying for errors, timeout here is good :)
         except Exception as e:
-            self.driver.save_screenshot("debug/debug_screenshot_confirmation_code_submission.png")
+            self.driver.save_screenshot( (self.debug_dir / f"{dt.now()}_screenshot_confirmation_code_submission.png").as_posix() )
             raise Exception("failed while providing confirmation code") from e
         return
     
