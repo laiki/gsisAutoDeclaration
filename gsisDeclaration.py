@@ -22,6 +22,8 @@ import tempfile
 import shutil
 import requests
 from datetime import datetime as dt
+from loguru import logger as lg
+import logger
 
 #%% defaults
 
@@ -32,6 +34,10 @@ GSIS_DEFAULTS = {
       #, 'retries'      : 3
     }
  
+#%% constants 
+
+DEBUG_DIR = pathlib.Path('./debug')
+
 #%% 
 
 
@@ -45,6 +51,8 @@ class gsisGrabber:
 
     """
     
+    @logger.logging     
+    @lg.catch
     def __init__(  self, username, password, taxid, email, receiver, text, download_dir
                  , url, timeout
                  #, retries
@@ -79,10 +87,8 @@ class gsisGrabber:
         self.timeout  = timeout
         #self.retries  = int(retries)
         
-        debug_dir = pathlib.Path('./debug')
-        #shutil.rmtree(debug_dir, ignore_errors=True)
-        if not debug_dir.exists():
-            debug_dir.mkdir(parents=True, exist_ok=False)
+        if not DEBUG_DIR.exists():
+            DEBUG_DIR.mkdir(parents=True, exist_ok=False)
 
         
         self.chrome_options = Options()
@@ -104,7 +110,7 @@ class gsisGrabber:
         self.download_dir.mkdir(exist_ok=True, parents=True)
 
         self.driver = webdriver.Chrome(options=self.chrome_options)
-        self.driver.get("https://dilosi.services.gov.gr/templates/YPDIL/create")
+        self.driver.get(self.url)
         self.wait = WebDriverWait(self.driver, self.timeout)
         self._acceptCoockies()
         
@@ -113,19 +119,27 @@ class gsisGrabber:
         self.fileurl  = None
         return
     
+    @logger.logging     
+    @lg.catch
     def __del__(self):
         """Destructor to clean up resources."""
         self.cleanup()
     
+    @logger.logging     
+    @lg.catch
     def __enter__(self):
         """Enter the runtime context related to this object."""
         return self
     
+    @logger.logging     
+    @lg.catch
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Exit the runtime context related to this object."""
         self.cleanup()
         
         
+    @logger.logging     
+    @lg.catch
     def cleanup(self):
         """
         Cleans up the resources used by the gsisGrabber.
@@ -139,6 +153,8 @@ class gsisGrabber:
             self.tmpdir.cleanup()
         return
         
+    @logger.logging     
+    @lg.catch
     def _acceptCoockies(self):
         """
         Accepts the cookie consent banner on the website.
@@ -154,6 +170,8 @@ class gsisGrabber:
             pass
         return
     
+    @logger.logging     
+    @lg.catch
     def _login(self):
         """
         Handles the login process on the gov.gr portal.
@@ -196,6 +214,8 @@ class gsisGrabber:
         self._authentificate()
         return
             
+    @logger.logging     
+    @lg.catch
     def _authentificate(self) :
         """
         Authenticates the user after login.
@@ -233,6 +253,8 @@ class gsisGrabber:
             raise Exception("error in authentification. TaxIDs differ") from e
         return
     
+    @logger.logging     
+    @lg.catch
     def _initForm(self):
         """
         Initializes the declaration form.
@@ -260,6 +282,8 @@ class gsisGrabber:
 
         return
     
+    @logger.logging     
+    @lg.catch
     def _declare(self) :
         """
         Fills out and submits the declaration form.
@@ -327,24 +351,20 @@ class gsisGrabber:
         local_retry = 3
         while(True): 
             try:
-                print('going to read code')
                 code = self._getSMSCode()
-                print('read code:', code)
                 if code is None:
                     continue
             except Exception as e:
                 raise Exception("no SMS code received") from e
                 
             try:
-                print('going to send code')
                 self._sendCode(code)
-                print('code send:', code)
                 break
             except Exception as e:
                 #self.retries -= 1 
                 local_retry -= 1
                 if local_retry == 0:
-                    raise Exception("unable too send the SMS code") from e
+                    raise Exception("unable too send the SMS code, retries exceeded") from e
                     
             break            
         
@@ -355,6 +375,8 @@ class gsisGrabber:
 
         return
     
+    @logger.logging     
+    @lg.catch
     def _sendCode(self, code):
         """
         Submits the SMS verification code.
@@ -395,6 +417,8 @@ class gsisGrabber:
             raise Exception("failed while providing confirmation code") from e
         return
     
+    @logger.logging     
+    @lg.catch
     def _getSMSCode(self):
         """
         Retrieves the SMS verification code.
@@ -413,6 +437,8 @@ class gsisGrabber:
             code = self.getCode()
         return code
     
+    @logger.logging     
+    @lg.catch
     def _saveDocument(self):
         """
         Downloads and saves the final declaration PDF.
@@ -437,7 +463,7 @@ class gsisGrabber:
 
         downloaded = list( pathlib.Path(self.tmpdir.name).glob('*') )
         if len(downloaded) != 1:
-            print('failed downloading file', downloaded)
+            lg.critical(f'failed downloading file {downloaded}')
             raise Exception(f"error in processing file download. check download folder {self.tmpdir.name}")
             
         base_dest = self.download_dir/self.filename if not self.filename is None else self.download_dir/downloaded[0]
@@ -452,6 +478,8 @@ class gsisGrabber:
         return
     
     
+    @logger.logging     
+    @lg.catch
     def run(self):
         """
         Executes the full process of creating and downloading a declaration.
@@ -468,23 +496,25 @@ class gsisGrabber:
         try:
             self._login()
         except Exception as e:
-            print('login failed')
+            lg.exception('login failed')
             raise e
         
         try:
             self._initForm()
         except Exception as e:
-            print('initialization of declaration failed')
+            lg.exception('initialization of declaration failed')
             raise e
         
         try:
             self._declare()
         except Exception as e:
-            print('declaration failed')
+            lg.exception('declaration failed')
             raise e
             
         return self.fileurl, self.filepath                  
 
+    @logger.logging     
+    @lg.catch
     def _scroll_to(self, element, timeout=5):
         """
         Scrolls the page to bring a specified element into view.
@@ -508,6 +538,8 @@ class gsisGrabber:
 
         return
     
+    @logger.logging     
+    @lg.catch
     def _scroll_and_click(self, element, timeout=5):
         """
         Scrolls to an element and securely clicks it.
@@ -540,7 +572,6 @@ if __name__ == '__main__':
     parser.add_argument('--download-dir', dest='download_dir', default=GSIS_DEFAULTS['download_dir'], required=False)
     parser.add_argument('--text', dest='text', default=None, required=True)
     parser.add_argument('--url', dest='url', default=GSIS_DEFAULTS['url'], required=False)
-    #parser.add_argument('--retries', dest='retries', default=GSIS_DEFAULTS['retries'], type=int, required=False)
     parser.add_argument('--timeout', dest='timeout', default=GSIS_DEFAULTS['timeout'], type=int, required=False)
     parser.add_argument('--filename', dest='filename', default=None, required=False)
     
@@ -565,10 +596,8 @@ if __name__ == '__main__':
             print(url, declaration)
             
     except Exception as e:
-        print(e)
-    #finally: 
-    #    gsis.cleanup() # <-ist explicitl
-    #
+        lg.exception(e)
+
     
 
 

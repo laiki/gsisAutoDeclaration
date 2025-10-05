@@ -24,12 +24,32 @@ import argparse
 import pathlib
 import itertools
 from datetime import datetime as dt
+import logger
+from functools import wraps
+from time import time
+from loguru import logger as lg
 
 #%% constands
 
+#%% helper
 
-#%%
+def timing(f):
+    @wraps(f)
+    def wrap(*args, **kw):
+        ts = time()
+        result = f(*args, **kw)
+        te = time()
+        lg.debug('runtime %2.4f sec: func:%r args:[%r, %r]' % \
+          (te-ts, f.__name__, args, kw))
+        return result
+    return wrap
 
+
+#%% logic
+
+@lg.catch
+@logger.logging
+@timing
 def automate(args):
     """
     Automates the bulk creation of declarations based on the provided arguments.
@@ -52,8 +72,6 @@ def automate(args):
     if not csv_file.exists():
         raise Exception(f"{csv_file.as_posix()} file not found!")
     
-    status_page = f"bulk_declare_{process_start.strftime('%Y%m%dT%H%M')}.html"
-    pd.DataFrame().to_html(status_page)
     
     header = pd.read_csv(csv_file, sep = args['csv_sep'], header=None).iloc[0]
     receivers = header.to_list()
@@ -67,23 +85,28 @@ def automate(args):
                                                          , timeout                  = args['sms_timeout']
                                                          , notification_center_name = args['notification_center_name']
                                                          , clear_button_label       = args['clear_button_label'] 
+                                                         , debug                    = args['debug'] 
                                                          )
     
     # will be used as function pointer in processing
     def getSMS():
-        print('calling sms_receiver.wait_for_sms_code()')
+        lg.debug('calling sms_receiver.wait_for_sms_code()')
         code = sms_receiver.wait_for_sms_code()
-        print('returned from sms_receiver.wait_for_sms_code():', code)
+        lg.debug('returned from sms_receiver.wait_for_sms_code():', code)
         return code
     
     status_over_all = list()
+    
+    full_status = pathlib.Path('downloads') / f"bulk_declare_{process_start.strftime('%Y%m%dT%H%M')}.html"
+    pd.DataFrame().to_html(full_status)
+
     
     for idx, row in df.iterrows():   
         download_dir = pathlib.Path('downloads')        
         if 'folder' in row.index.to_list():
             download_dir = download_dir / row.folder
         download_dir.mkdir(exist_ok=True, parents=True)
-        
+
         processed = list()
         receiver_list = [ e for e in list(enumerate(header)) if e[1] != 'folder' ]
         for rec in receiver_list: 
@@ -111,11 +134,11 @@ def automate(args):
                         , text       = text
                         ) as gsis:
                     url, declaration = gsis.run()
-                    print(f"{dt.now()}: declaration {idx}/{receiver_index} of {df.shape[0]}/{len(receiver_list)} for {receiver_name} created")
+                    lg.success(f"{dt.now()}: declaration {idx}/{receiver_index} of {df.shape[0]}/{len(receiver_list)} for {receiver_name} created")
 
                     
             except Exception as e:
-                print(e)
+                lg.exception(e)
             finally:
                 sms_receiver.click_clear_all_button()
 
@@ -128,10 +151,13 @@ def automate(args):
         
         status_over_all.append( processed )
         done = pd.DataFrame(processed)
-        done.to_html(download_dir / f"{idx}_result.html")
+        singel_status = download_dir / f"{idx}_result.html"
+        done.to_html(singel_status)
+        lg.success( f"{singel_status} updated" )
 
         all_done = pd.DataFrame(list(itertools.chain.from_iterable(status_over_all)))
-        all_done.to_html(f"bulk_declare_{process_start.strftime('%Y%m%dT%H%M')}.html")
+        all_done.to_html(full_status)
+        lg.success(f"{full_status} updated" )
     return
 
 
@@ -168,10 +194,6 @@ if __name__ == '__main__':
                         , default = gsisDeclaration.GSIS_DEFAULTS['url'], type=str, required=False
                         , help="url to the Hellenic portal used to create the declaration." 
                         )
-    #parser.add_argument(  '--retries', dest='retries'
-    #                    , default = gsisDeclaration.GSIS_DEFAULTS['retries'], type=int, required=False
-    #                    , help="max retries to collect the SMS code." 
-    #                    )
     parser.add_argument(  '--web_timeout', dest='web_timeout'
                         , default = gsisDeclaration.GSIS_DEFAULTS['timeout'], type=int, required=False
                         , help="Timeout in seconds to wait for a web result." 
@@ -203,10 +225,24 @@ if __name__ == '__main__':
                         ,  default = SMSnotificationParser.SMS_DEFAULTS['clear_button_label'], type=str, required=False
                         , help="Language settings dependent label of the clear all notifications button."
                         )
+    parser.add_argument(  '--debug', dest='debug'
+                        ,  default = False, type=bool, required=False
+                        , help="Togle debug mode. If activated, folder debug will dontain screenshots of notification area."
+                        )
+    parser.add_argument(  '--log-level', dest='log_level'
+                        ,  default = 'SUCCESS', choices=['TRACE', 'DEBUG', 'INFO', 'SUCCESS', 'WARNING', 'ERROR', 'CRITICAL'], required=False
+                        , help="level of logging to be used."
+                        )
+    
+
 
                  
     
     args = vars(parser.parse_args())
-
+    logger.initLogging(args)
+    lg.debug(f"process started with arguments: {args}")
+    
     automate(args)
+    
+    lg.info("processing finished")
     

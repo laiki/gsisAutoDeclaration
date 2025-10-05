@@ -21,6 +21,9 @@ from screeninfo import get_monitors
 import pandas as pd
 import argparse
 from datetime import datetime as dt
+import pathlib
+from loguru import logger as lg
+import logger
 
 #%% defaults
 
@@ -28,12 +31,14 @@ SMS_DEFAULTS = {
           'text_pattern'  : "(\d{6})\s+ΚΩΔΙΚΟΣ ΓΙΑ ΕΚΔΟΣΗ"
         , 'tesseract_cmd' : r"C:\Program Files\Tesseract-OCR\tesseract.exe"
         , 'timeout'       : 120 
-        , 'notification_center_name' : "Benachrichtigungscenter"
+        , 'notification_center_name': "Benachrichtigungscenter"
         , 'clear_button_label'      : "Alle löschen"
-    
+        , 'debug'                   : False
     }
  
+#%% constants
 
+DEBUG_DIR = pathlib.Path('./debug')
 
 #%%
 
@@ -65,9 +70,11 @@ class SMSNotification( metaclass=Singleton ):
     PIXEL_OFFSET_NOTIFIER_Y_POSITION = -20
 
 
+    @logger.logging     
+    @lg.catch
     def __init__(  self, text_pattern : str, tesseract_cmd : str, timeout : int
                  , notification_center_name = SMS_DEFAULTS['notification_center_name']
-                 , clear_button_label = SMS_DEFAULTS['clear_button_label']):
+                 , clear_button_label = SMS_DEFAULTS['clear_button_label'], debug=SMS_DEFAULTS['debug']):
         """
         Initializes the SMSNotification instance.
 
@@ -81,12 +88,16 @@ class SMSNotification( metaclass=Singleton ):
                 Defaults to "Alle löschen".
 
         """
-        self.text_pattern  = re.compile(text_pattern)
+        self.debug          = debug
+        if self.debug:
+            DEBUG_DIR.mkdir(parents= True, exists_ok=True)
+            
+        self.text_pattern   = re.compile(text_pattern)
         pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
-        self.timeout       = timeout
-        self.notification_center_name = notification_center_name
+        self.timeout        = timeout
+        self.notification_center_name   = notification_center_name
         
-        self.clear_button_label = clear_button_label
+        self.clear_button_label         = clear_button_label
         
         
         monitors = list()
@@ -103,7 +114,9 @@ class SMSNotification( metaclass=Singleton ):
         self.notification_y_click_position = int( self.primary_display.y + self.primary_display.height + SMSNotification.PIXEL_OFFSET_NOTIFIER_Y_POSITION )
         
         self.click_clear_all_button()
-            
+    
+    @logger.logging     
+    @lg.catch
     def _click_notification_icon(self):
         """
         Clicks the notification icon to open the Notification Center.
@@ -117,22 +130,8 @@ class SMSNotification( metaclass=Singleton ):
         return
 
 
-    def _extract_code_from_text(self, text):
-        """
-        Extracts a code from the given text using the defined regex pattern.
-
-        Args:
-            text (str): The text from which to extract the code.
-
-        Returns:
-            str: The extracted code, or None if no match is found.
-
-        """
-        match = re.search(self.text_pattern, text)
-        if match:
-            return match.group(1)
-        return None
-
+    @logger.logging     
+    @lg.catch
     def _capture_notification_area(self):
         """
         Captures a screenshot of the notification area.
@@ -148,6 +147,8 @@ class SMSNotification( metaclass=Singleton ):
 
 
 
+    @logger.logging     
+    @lg.catch
     def _extract_code(self, text):
         """
         Extracts the 6-digit code from the given text based on the regex pattern.
@@ -161,10 +162,14 @@ class SMSNotification( metaclass=Singleton ):
         """
         match = re.search(self.text_pattern, text)
         if match:
-            return match.group(1)
+            code = match.group(1)
+            lg.success(f"pattern matched, code: {code}")
+            return code
         return None
     
 
+    @logger.logging     
+    @lg.catch
     def click_clear_all_button(self):
         """
         Clicks the "Clear All" button in the Notification Center.
@@ -190,13 +195,15 @@ class SMSNotification( metaclass=Singleton ):
                     cleared = True
         return cleared
 
+    @logger.logging     
+    @lg.catch
     def wait_for_sms_code(self):
         """
         Waits for an SMS code to appear in the Notification Center.
 
         This method repeatedly captures the notification area, uses OCR to extract text,
         and searches for the code until the timeout is reached. Debug screenshots are saved
-        for each attempt.
+        for each attempt if class has been instantiated with debugging enabled.
 
         Returns:
             str: The extracted SMS code, or None if the timeout is reached.
@@ -209,18 +216,26 @@ class SMSNotification( metaclass=Singleton ):
             text = pytesseract.image_to_string(screenshot, lang='ell+deu+eng')
             code = self._extract_code(text)
             if code:
-                print("code found:", code)
-                screenshot.save( f"./debug/{dt.now().strftime('%Y%m%dT%H%M%S')}_code.png")
+                lg.success(f"code found: {code}")
+                if self.debug:
+                    pic = DEBUG_DIR / f"{dt.now().strftime('%Y%m%dT%H%M%S')}_code.png"
+                    screenshot.save( pic )
+                    lg.debug(f"schreenshot stored at {pic}")                    
 
                 self.click_clear_all_button()
                 return code
             # no code received :/
-            screenshot.save( f"./debug/{dt.now().strftime('%Y%m%dT%H%M%S')}_no_code.png")
+            if self.debug:
+                pic = DEBUG_DIR / f"{dt.now().strftime('%Y%m%dT%H%M%S')}_no_code.png"
+                screenshot.save( pic )
+                lg.warning(f"failed to find pattern in {pic}")
             
             time.sleep(1)
-        print("SMS code receiver timeout.")
+        lg.error("SMS code receiver timeout.")
         return None
     
+    @logger.logging     
+    @lg.catch
     @property
     def code(self):
         """
@@ -236,6 +251,7 @@ class SMSNotification( metaclass=Singleton ):
 #%% main
 
 if __name__ == '__main__':
+    
     parser = argparse.ArgumentParser(
           prog='SMSNotificationParser'
         , description="tries to retreive SMS codes receieved and shown in the Windows Notification bar"
@@ -246,6 +262,7 @@ if __name__ == '__main__':
     parser.add_argument('--notification-center-name', dest='notification_center_name',   default=SMS_DEFAULTS['notification_center_name'])
     parser.add_argument('--clear-button-label', dest='clear_button_label',   default=SMS_DEFAULTS['clear_button_label'])
     args = vars(parser.parse_args())
+    
     sms_receiver = SMSNotification(  text_pattern=args['pattern']
                                    , tesseract_cmd=args['tesseract']
                                    , timeout=args['timeout']

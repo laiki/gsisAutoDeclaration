@@ -4,3 +4,4 @@ pyautogui
 uiautomation
 screeninfo
 pandas
+loguru
