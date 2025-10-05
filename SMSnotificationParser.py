@@ -164,7 +164,9 @@ class SMSNotification( metaclass=Singleton ):
         match = re.search(self.text_pattern, text)
         if match:
             code = match.group(1)
-            lg.success(f"pattern matched, code: {code}")
+            lg.success(f"pattern matched, code: {code}, {match.group(0)}, {self.text_pattern}, {text}")
+            if code is None:
+                lg.critical("pattern matched, but result is None")
             return code
         return None
     
