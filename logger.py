@@ -25,8 +25,8 @@ def logging(f):
             
         result = f(*args, **kw)
 
-        logger.trace("exit: %r args[%r, %r]" % \
-          (f.__name__, args, kw))
+        logger.trace("exit: %r" % \
+          (f.__name__))
         return result
     return wrap
 

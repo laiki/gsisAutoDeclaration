@@ -90,7 +90,7 @@ class SMSNotification( metaclass=Singleton ):
         """
         self.debug          = debug
         if self.debug:
-            DEBUG_DIR.mkdir(parents= True, exists_ok=True)
+            DEBUG_DIR.mkdir(parents= True, exist_ok=True)
             
         self.text_pattern   = re.compile(text_pattern)
         pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
@@ -213,7 +213,7 @@ class SMSNotification( metaclass=Singleton ):
         while (time.time() - start) < self.timeout:
             self._click_notification_icon()
             screenshot = self._capture_notification_area()
-            text = pytesseract.image_to_string(screenshot, lang='ell+deu+eng')
+            text = pytesseract.image_to_string(screenshot, lang='ell' #'+deu+eng')
             code = self._extract_code(text)
             if code:
                 lg.success(f"code found: {code}")

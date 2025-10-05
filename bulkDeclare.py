@@ -97,7 +97,10 @@ def automate(args):
     
     status_over_all = list()
     
-    full_status = pathlib.Path('downloads') / f"bulk_declare_{process_start.strftime('%Y%m%dT%H%M')}.html"
+    download_base_dir = pathlib.Path(args['download_dir'])
+    download_base_dir.mkdir(parents=True, exist_ok=True)
+    
+    full_status = download_base_dir / f"bulk_declare_{process_start.strftime('%Y%m%dT%H%M')}.html"
     pd.DataFrame().to_html(full_status)
 
     
