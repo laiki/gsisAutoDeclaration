@@ -28,7 +28,7 @@ import logger
 #%% defaults
 
 SMS_DEFAULTS = {
-          'text_pattern'  : "(\d{6})\s+ΚΩΔΙΚΟΣ ΓΙΑ ΕΚΔΟΣΗ"
+          'text_pattern'  : r".*(\d{6})\s+ΚΩΔΙΚΟΣ ΓΙΑ ΕΚΔΟΣΗ.*|.*GOVGR.+(\d{6})\s+.*"
         , 'tesseract_cmd' : r"C:\Program Files\Tesseract-OCR\tesseract.exe"
         , 'timeout'       : 120 
         , 'notification_center_name': "Benachrichtigungscenter"
@@ -160,6 +160,7 @@ class SMSNotification( metaclass=Singleton ):
             str: The extracted 6-digit code, or None if no match is found.
 
         """
+        
         match = re.search(self.text_pattern, text)
         if match:
             code = match.group(1)
@@ -204,6 +205,7 @@ class SMSNotification( metaclass=Singleton ):
         This method repeatedly captures the notification area, uses OCR to extract text,
         and searches for the code until the timeout is reached. Debug screenshots are saved
         for each attempt if class has been instantiated with debugging enabled.
+        The ocr text is been preprocessed by erplacing \n with ; as it showed significant performance increase.
 
         Returns:
             str: The extracted SMS code, or None if the timeout is reached.
@@ -213,8 +215,14 @@ class SMSNotification( metaclass=Singleton ):
         while (time.time() - start) < self.timeout:
             self._click_notification_icon()
             screenshot = self._capture_notification_area()
-            text = pytesseract.image_to_string(screenshot, lang='ell' #'+deu+eng')
-            code = self._extract_code(text)
+            text = pytesseract.image_to_string(screenshot, lang='ell+deu+eng')
+            
+            used_text = text
+            if isinstance(text, str):
+                used_text = text.replace('\n', ';')
+            lg.debug(f"parsing ocr text {used_text}")            
+            
+            code = self._extract_code(used_text)
             if code:
                 lg.success(f"code found: {code}")
                 if self.debug:
