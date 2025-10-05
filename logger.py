@@ -39,7 +39,7 @@ def initLogging(args : dict):
     logger.add(  LOG_DIR / f"{dt.now().strftime('%Y%m%dT%H%M')}.log"
                , format=LOGFORMAT, level=args.get('log_level', 'CRITICAL')
                , enqueue=True, mode='w'
-               , rotation="1MB", compression="zip"
+               , rotation="10 MB", compression="zip"
                )
     logger.add(sys.stderr, format=LOGFORMAT, level="ERROR", colorize=True)
     logger.add(sys.stdout, format=LOGFORMAT, level="INFO", colorize=True)
